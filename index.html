@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Live Location Sender</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <h2>Геолокация отправляется...</h2>
+  <div id="log" style="font-family: monospace;"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function getParam(name) {
+      return new URLSearchParams(window.location.search).get(name) || "";
+    }
+
+    const vehicleId = getParam("id") || "ambulance_unknown";
+    const driver = getParam("driver") || "Без имени";
+    const status = getParam("status") || "Неизвестно";
+    const log = document.getElementById("log");
+
+    async function sendLocation() {
+      if (!navigator.geolocation) {
+        log.innerHTML += `<p>⚠️ Геолокация не поддерживается</p>`;
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        const data = {
+          latitude: lat,
+          longitude: lng,
+          driver: driver,
+          status: status,
+          timestamp: new Date().toISOString()
+        };
+
+        try {
+          await db.collection("vehicles_location").doc(vehicleId).set(data);
+          log.innerHTML = `<p>✅ Обновлено ${new Date().toLocaleTimeString()} — ${JSON.stringify(data)}</p>`;
+        } catch (e) {
+          log.innerHTML += `<p>❌ Ошибка: ${e.message}</p>`;
+        }
+      }, (error) => {
+        log.innerHTML += `<p>❌ Геоошибка: ${error.message}</p>`;
+      });
+    }
+
+    sendLocation();
+    setInterval(sendLocation, 10000);
+  </script>
+</body>
+</html>
